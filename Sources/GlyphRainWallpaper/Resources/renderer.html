@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Glyph Rain Wallpaper</title>
+  <style>
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #030108;
+      cursor: none;
+      user-select: none;
+    }
+
+    canvas {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      display: block;
+      background: #030108;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="matrix"></canvas>
+  <script>
+    (() => {
+      const canvas = document.getElementById("matrix");
+      const ctx = canvas.getContext("2d", { alpha: false });
+      const characters = "アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワヲン0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ#$%&*+-/<>[]{}";
+      const rareCharacters = "零壱弐参伍九";
+
+      const state = {
+        speed: 0.6722222222,
+        density: 1.8111111111,
+        textScale: 1.1444444444,
+        brightness: 0.8666666667,
+        glow: 1.1,
+        glowLength: 20,
+        paused: false,
+        preset: {
+          background: "#030108",
+          trail: "#4b1b84",
+          head: "#9dff2f",
+          accent: "#ff7a18",
+          magenta: "#ff2bd6"
+        },
+        targetPresets: [],
+        columns: [],
+        width: 0,
+        height: 0,
+        dpr: 1,
+        fontSize: 24,
+        rowStep: 30,
+        referenceRowStep: 25,
+        columnStep: 72,
+        lastTime: performance.now(),
+        hasPainted: false,
+        colors: {}
+      };
+
+      function randomCharacter() {
+        if (Math.random() > 0.992) {
+          return rareCharacters[Math.floor(Math.random() * rareCharacters.length)];
+        }
+        return characters[Math.floor(Math.random() * characters.length)];
+      }
+
+      function stableNoise(index, salt) {
+        const value = Math.sin(index * 127.1 + salt * 311.7) * 43758.5453123;
+        return value - Math.floor(value);
+      }
+
+      function makeGlyphs(count) {
+        return Array.from({ length: count }, randomCharacter);
+      }
+
+      function resizeGlyphs(previousGlyphs, count) {
+        return Array.from({ length: count }, (_, index) => previousGlyphs?.[index] ?? randomCharacter());
+      }
+
+      function hexToRgb(hex) {
+        const raw = hex.replace("#", "");
+        const int = Number.parseInt(raw.length === 3 ? raw.split("").map((x) => x + x).join("") : raw, 16);
+        return {
+          r: (int >> 16) & 255,
+          g: (int >> 8) & 255,
+          b: int & 255
+        };
+      }
+
+      function rgba(hex, alpha) {
+        const { r, g, b } = hexToRgb(hex);
+        return `rgba(${r}, ${g}, ${b}, ${Math.max(0, Math.min(1, alpha))})`;
+      }
+
+      function mixRgb(from, to, amount) {
+        const t = Math.max(0, Math.min(1, amount));
+        return {
+          r: Math.round(from.r + (to.r - from.r) * t),
+          g: Math.round(from.g + (to.g - from.g) * t),
+          b: Math.round(from.b + (to.b - from.b) * t)
+        };
+      }
+
+      function rgbaRgb(rgb, alpha) {
+        return `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${Math.max(0, Math.min(1, alpha))})`;
+      }
+
+      function rgbString(rgb) {
+        return `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`;
+      }
+
+      function cacheColors() {
+        state.colors = {
+          background: state.preset.background,
+          headRgb: hexToRgb(state.preset.head),
+          accentRgb: hexToRgb(state.preset.accent),
+          trailRgb: hexToRgb(state.preset.trail),
+          magentaRgb: hexToRgb(state.preset.magenta),
+          head: rgba(state.preset.head, 0.98 * state.brightness),
+          headTail: rgba(state.preset.head, 0.82 * state.brightness),
+          accent: rgba(state.preset.accent, 0.82 * state.brightness),
+          trail: rgba(state.preset.trail, 0.86 * state.brightness),
+          magenta: rgba(state.preset.magenta, 0.74 * state.brightness),
+          scanline: rgba(state.preset.head, 0.01 * state.brightness)
+        };
+      }
+
+      function resize() {
+        const dprLimit = state.density > 2.6 || state.textScale < 0.75 ? 1.6 : 2.0;
+        const dpr = Math.max(1, Math.min(window.devicePixelRatio || 1, dprLimit));
+        const width = Math.floor(window.innerWidth * dpr);
+        const height = Math.floor(window.innerHeight * dpr);
+
+        if (width === state.width && height === state.height && dpr === state.dpr) {
+          return;
+        }
+
+        state.width = width;
+        state.height = height;
+        state.dpr = dpr;
+        canvas.width = width;
+        canvas.height = height;
+        cacheColors();
+
+        state.fontSize = Math.max(13, Math.round(17 * dpr * state.textScale));
+        state.rowStep = Math.round(state.fontSize * 1.28);
+        state.referenceRowStep = Math.round(17 * dpr * 1.1444444444 * 1.28);
+        ctx.font = `700 ${state.fontSize}px ui-monospace, "SF Mono", Menlo, Consolas, monospace`;
+        ctx.textBaseline = "top";
+        ctx.textAlign = "center";
+
+        rebuildColumns();
+        clearCanvas();
+      }
+
+      function rebuildColumns() {
+        const oldColumns = state.columns;
+        state.columnStep = Math.max(
+          state.fontSize * 1.28,
+          state.fontSize * (4.65 - Math.min(state.density, 3.2) * 1.06)
+        );
+        const count = Math.ceil(state.width / state.columnStep) + 2;
+        state.columns = Array.from({ length: count }, (_, index) => makeColumn(index, oldColumns[index]));
+      }
+
+      function makeColumn(index, previousColumn) {
+        const rowCount = Math.ceil(state.height / state.rowStep) + 4;
+        const laneJitter = (stableNoise(index, 1) - 0.5) * state.columnStep * 0.08;
+        const tailLength = Math.min(rowCount - 1, 28 + Math.floor(stableNoise(index, 2) * Math.max(18, rowCount * 0.58)));
+        const preservedHead = previousColumn ? (previousColumn.head / previousColumn.rowCount) * rowCount : stableNoise(index, 3) * rowCount;
+        const head = preservedHead % rowCount;
+        return {
+          x: index * state.columnStep + state.columnStep * 0.5 + laneJitter,
+          head,
+          lastHeadRow: Math.floor(head) % rowCount,
+          velocity: 15 + stableNoise(index, 4) * 14,
+          rowCount,
+          tailLength,
+          glyphs: resizeGlyphs(previousColumn?.glyphs, rowCount),
+          brightnessSeed: stableNoise(index, 6) * 6.28,
+          colorShift: stableNoise(index, 7)
+        };
+      }
+
+      function clearCanvas() {
+        ctx.fillStyle = state.colors.background || state.preset.background;
+        ctx.fillRect(0, 0, state.width, state.height);
+        state.hasPainted = false;
+      }
+
+      function advanceColumn(column, delta) {
+        const rowAdjustedVelocity = column.velocity * (state.referenceRowStep / state.rowStep);
+        const previousHeadRow = column.lastHeadRow;
+        column.head = (column.head + rowAdjustedVelocity * state.speed * delta) % column.rowCount;
+        const currentHeadRow = Math.floor(column.head) % column.rowCount;
+        let crossedRows = (currentHeadRow - previousHeadRow + column.rowCount) % column.rowCount;
+        crossedRows = Math.min(crossedRows, column.rowCount);
+
+        for (let step = 1; step <= crossedRows; step++) {
+          const crossedHeadRow = (previousHeadRow + step) % column.rowCount;
+          const refreshRow = (crossedHeadRow - column.tailLength - 1 + column.rowCount) % column.rowCount;
+          column.glyphs[refreshRow] = randomCharacter();
+        }
+
+        column.lastHeadRow = currentHeadRow;
+      }
+
+      function drawColumn(column) {
+        for (let row = 0; row < column.rowCount; row++) {
+          const distance = (column.head - row + column.rowCount) % column.rowCount;
+          if (distance > column.tailLength) continue;
+
+          const y = Math.round(row * state.rowStep - state.rowStep * 2);
+          if (y < -state.rowStep || y > state.height + state.rowStep) continue;
+
+          const glowPower = Math.max(0, Math.min(1, (state.glow - 0.1) / 2.25));
+          const glowLevel = Math.round(glowPower * 9) + 1;
+          const haloBlurByLevel = [0, 1, 3, 7, 12, 19, 28, 39, 52, 68];
+          const haloAlphaByLevel = [0, 0.08, 0.076, 0.071, 0.065, 0.059, 0.052, 0.046, 0.04, 0.035];
+          const brightTailLength = Math.round(Math.max(12, Math.min(30, state.glowLength)));
+          const isHead = distance < 1;
+          const x = Math.round(column.x);
+          const glyph = column.glyphs[row];
+
+          const highZone = Math.max(1, Math.round(brightTailLength * 0.4));
+          const midZone = Math.max(1, Math.round(brightTailLength * 0.3));
+          const lowZone = Math.max(1, brightTailLength - highZone - midZone);
+          const gradientDistance = Math.min(distance, brightTailLength);
+          let brightnessCurve;
+          let colorBlend;
+
+          if (gradientDistance < highZone) {
+            const t = gradientDistance / highZone;
+            brightnessCurve = 0.76 + Math.pow(1 - t, 0.65) * 0.24;
+            colorBlend = 0.72 + Math.pow(1 - t, 0.8) * 0.28;
+          } else if (gradientDistance < highZone + midZone) {
+            const t = (gradientDistance - highZone) / midZone;
+            brightnessCurve = 0.36 + Math.pow(1 - t, 1.45) * 0.34;
+            colorBlend = 0.28 + Math.pow(1 - t, 1.25) * 0.36;
+          } else if (gradientDistance <= brightTailLength) {
+            const t = (gradientDistance - highZone - midZone) / lowZone;
+            brightnessCurve = 0.12 + Math.pow(1 - t, 2.4) * 0.2;
+            colorBlend = Math.pow(1 - t, 2.2) * 0.22;
+          } else {
+            brightnessCurve = 0.055;
+            colorBlend = 0;
+          }
+          const frontRgb = column.colorShift > 0.82 && distance < 2 ? state.colors.accentRgb : state.colors.headRgb;
+          const tailRgb = distance % 17 === 0 && colorBlend < 0.22 ? state.colors.magentaRgb : state.colors.trailRgb;
+          const glyphRgb = mixRgb(tailRgb, frontRgb, colorBlend);
+          const exposure = Math.pow(state.brightness, 1.18);
+          const glyphAlpha = brightnessCurve * exposure;
+          const haloAlpha = haloAlphaByLevel[glowLevel - 1] * Math.pow(colorBlend, 0.8) * exposure;
+
+          ctx.globalCompositeOperation = "source-over";
+          ctx.shadowBlur = 0;
+          ctx.globalAlpha = 1;
+          ctx.fillStyle = rgbaRgb(glyphRgb, glyphAlpha);
+          ctx.fillText(glyph, x, y);
+
+          if (haloAlpha > 0.001) {
+            ctx.save();
+            ctx.globalCompositeOperation = "lighter";
+            ctx.shadowColor = rgbString(glyphRgb);
+            ctx.shadowBlur = haloBlurByLevel[glowLevel - 1] * state.dpr;
+            ctx.globalAlpha = haloAlpha * (isHead ? 1 : 0.72);
+            ctx.fillStyle = rgbaRgb(glyphRgb, 0.18);
+            ctx.fillText(glyph, x, y);
+            ctx.restore();
+          }
+
+          ctx.globalAlpha = 1;
+        }
+
+        ctx.shadowBlur = 0;
+        ctx.globalCompositeOperation = "source-over";
+      }
+
+      function drawScanlines(now) {
+        ctx.save();
+        ctx.globalCompositeOperation = "source-over";
+        ctx.fillStyle = state.colors.scanline;
+        const gap = Math.max(4, Math.floor(5 * state.dpr));
+        const offset = Math.floor((now * 0.018) % gap);
+        for (let y = offset; y < state.height; y += gap) {
+          ctx.fillRect(0, y, state.width, 1);
+        }
+        ctx.restore();
+      }
+
+      function drawScene(delta, advance) {
+        ctx.fillStyle = state.colors.background || state.preset.background;
+        ctx.fillRect(0, 0, state.width, state.height);
+
+        ctx.save();
+        ctx.globalCompositeOperation = "source-over";
+        for (const column of state.columns) {
+          if (advance) {
+            advanceColumn(column, delta);
+          }
+          drawColumn(column);
+        }
+        ctx.restore();
+
+        drawScanlines(performance.now());
+        state.hasPainted = true;
+      }
+
+      function frame(now) {
+        resize();
+        const delta = Math.min(0.05, Math.max(0.001, (now - state.lastTime) / 1000));
+        state.lastTime = now;
+
+        if (!state.paused) {
+          drawScene(delta, true);
+        } else if (!state.hasPainted) {
+          drawScene(1 / 60, true);
+        }
+
+        requestAnimationFrame(frame);
+      }
+
+      window.GlyphRainWallpaper = {
+        applySettings(next) {
+          const oldDensity = state.density;
+          const oldTextScale = state.textScale;
+          const oldPreset = JSON.stringify(state.preset);
+          const wasPaused = state.paused;
+
+          Object.assign(state, next);
+          document.body.style.background = state.preset.background;
+          cacheColors();
+
+          const densityChanged = Math.abs(oldDensity - state.density) > 0.001;
+          const textScaleChanged = Math.abs(oldTextScale - state.textScale) > 0.001;
+          const presetChanged = JSON.stringify(state.preset) !== oldPreset;
+          if (densityChanged || textScaleChanged) {
+            state.width = 0;
+            resize();
+          }
+          if (presetChanged || densityChanged || textScaleChanged) {
+            clearCanvas();
+          }
+
+          if (state.paused && (!state.hasPainted || !wasPaused)) {
+            drawScene(1 / 60, !state.hasPainted);
+          }
+        }
+      };
+
+      window.addEventListener("resize", resize);
+      resize();
+      requestAnimationFrame(frame);
+    })();
+  </script>
+</body>
+</html>
