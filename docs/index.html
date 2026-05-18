@@ -1,0 +1,1051 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Glyph Rain Wallpaper 是一个 macOS 菜单栏动态壁纸应用，使用固定字符网格和流动亮度波生成科幻文字雨效果。">
+  <title>Glyph Rain Wallpaper</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #05060a;
+      --line: rgba(220, 235, 255, 0.16);
+      --text: #f6f8fc;
+      --muted: #aeb6c2;
+      --theme-bg: #030108;
+      --theme-trail: #4b1b84;
+      --theme-head: #9dff2f;
+      --theme-accent: #ff7a18;
+      --radius: 8px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", "Microsoft YaHei", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      background: var(--bg);
+      scroll-behavior: smooth;
+      scrollbar-width: none;
+    }
+
+    html::-webkit-scrollbar,
+    body::-webkit-scrollbar {
+      display: none;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 78% 14%, color-mix(in srgb, var(--theme-accent) 18%, transparent), transparent 22%),
+        radial-gradient(circle at 76% 14%, color-mix(in srgb, var(--theme-head) 16%, transparent), transparent 28%),
+        radial-gradient(circle at 16% 78%, color-mix(in srgb, var(--theme-trail) 24%, transparent), transparent 36%),
+        var(--bg);
+      transition: background 260ms ease;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .rain {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      width: 100vw;
+      height: 100vh;
+      background: #020309;
+    }
+
+    .page-vignette {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      background:
+        radial-gradient(circle at 84% 22%, color-mix(in srgb, var(--theme-accent) 14%, transparent), transparent 24%),
+        linear-gradient(90deg, rgba(5, 6, 10, 0.9) 0%, rgba(5, 6, 10, 0.48) 48%, rgba(5, 6, 10, 0.18) 100%),
+        linear-gradient(180deg, rgba(5, 6, 10, 0.42) 0%, rgba(5, 6, 10, 0.08) 42%, rgba(5, 6, 10, 0.72) 100%);
+    }
+
+    .nav {
+      position: fixed;
+      z-index: 5;
+      top: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      width: min(1200px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 24px 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    .mark {
+      display: grid;
+      place-items: center;
+      width: 32px;
+      height: 32px;
+      border: 1px solid color-mix(in srgb, var(--theme-head) 62%, white 10%);
+      border-radius: 7px;
+      background: color-mix(in srgb, var(--theme-head) 15%, transparent);
+      color: var(--theme-head);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-weight: 900;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .nav-icon,
+    .lang-button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 38px;
+      height: 38px;
+      border: 1px solid rgba(220, 235, 255, 0.18);
+      border-radius: 7px;
+      background: rgba(255, 255, 255, 0.06);
+      color: #edf3fb;
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .nav-icon:hover,
+    .lang-button:hover {
+      border-color: color-mix(in srgb, var(--theme-head) 64%, white 8%);
+      background: color-mix(in srgb, var(--theme-head) 14%, transparent);
+    }
+
+    .nav-icon svg,
+    .lang-button svg {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      stroke-width: 2.2;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .lang-button {
+      position: relative;
+    }
+
+    .lang-code {
+      position: absolute;
+      right: 5px;
+      bottom: 3px;
+      color: var(--theme-head);
+      font-size: 9px;
+      line-height: 1;
+    }
+
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+    }
+
+    .hero {
+      position: relative;
+      z-index: 2;
+      width: min(1200px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 84px 0 8px;
+    }
+
+    .hero-inner {
+      max-width: 620px;
+    }
+
+    .eyebrow {
+      margin-bottom: 12px;
+      color: var(--theme-head);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    h1 {
+      max-width: 780px;
+      margin: 0;
+      font-size: clamp(42px, 5.8vw, 72px);
+      line-height: 0.98;
+      letter-spacing: 0;
+    }
+
+    .hero-copy {
+      max-width: 640px;
+      margin: 12px 0 0;
+      color: #d6dde8;
+      font-size: clamp(15px, 1.35vw, 18px);
+      line-height: 1.5;
+    }
+
+    .scroll-cue {
+      position: fixed;
+      z-index: 3;
+      left: 50%;
+      bottom: 26px;
+      display: grid;
+      justify-items: center;
+      gap: 12px;
+      transform: translateX(-50%);
+      color: color-mix(in srgb, var(--theme-head) 80%, white 16%);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0;
+      pointer-events: none;
+      opacity: 0.92;
+      transition: opacity 240ms ease;
+      animation: cueBounce 1.35s cubic-bezier(.28, .84, .42, 1) infinite;
+    }
+
+    .scroll-cue.hidden {
+      opacity: 0;
+    }
+
+    .scroll-cue-mark {
+      position: relative;
+      display: grid;
+      place-items: center;
+      width: 42px;
+      height: 42px;
+      border: 1px solid color-mix(in srgb, var(--theme-head) 54%, white 10%);
+      border-radius: 999px;
+      background: color-mix(in srgb, var(--theme-bg) 62%, transparent);
+      box-shadow:
+        0 0 24px color-mix(in srgb, var(--theme-head) 22%, transparent),
+        inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    }
+
+    .scroll-cue-mark::before {
+      content: "";
+      width: 12px;
+      height: 12px;
+      border-right: 2px solid var(--theme-head);
+      border-bottom: 2px solid var(--theme-head);
+      transform: translateY(-3px) rotate(45deg);
+      filter: drop-shadow(0 0 10px var(--theme-head));
+    }
+
+    @keyframes cueBounce {
+      0% {
+        transform: translateX(-50%) translateY(0);
+      }
+      42% {
+        transform: translateX(-50%) translateY(12px);
+      }
+      58% {
+        transform: translateX(-50%) translateY(6px);
+      }
+      74% {
+        transform: translateX(-50%) translateY(10px);
+      }
+      100% {
+        transform: translateX(-50%) translateY(0);
+      }
+    }
+
+    .demo-panel {
+      position: fixed;
+      z-index: 4;
+      top: 84px;
+      right: max(20px, calc((100vw - 1200px) / 2));
+      width: min(320px, calc(100vw - 40px));
+      max-height: calc(100dvh - 104px);
+      overflow: auto;
+      overscroll-behavior: contain;
+      padding: 16px;
+      border: 1px solid rgba(220, 235, 255, 0.2);
+      border-radius: var(--radius);
+      background: color-mix(in srgb, var(--theme-bg) 70%, rgba(7, 8, 13, 0.6));
+      backdrop-filter: blur(18px);
+      box-shadow: 0 18px 60px rgba(0, 0, 0, 0.34);
+    }
+
+    .demo-panel h2 {
+      margin: 0 0 12px;
+      font-size: 15px;
+      letter-spacing: 0;
+    }
+
+    .control-row {
+      display: grid;
+      grid-template-columns: 82px 1fr 42px;
+      align-items: center;
+      gap: 10px;
+      min-height: 30px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .control-row + .control-row {
+      margin-top: 8px;
+    }
+
+    .control-row output {
+      color: #dfe8f5;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      text-align: right;
+    }
+
+    .control-row input[type="range"] {
+      width: 100%;
+      accent-color: var(--theme-head);
+    }
+
+    .theme-options {
+      grid-column: 2 / 4;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 7px;
+    }
+
+    .theme-options input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .theme-chip {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 30px;
+      padding: 0 8px;
+      border: 1px solid rgba(220, 235, 255, 0.18);
+      border-radius: 7px;
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
+    .theme-chip::before {
+      content: "";
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--chip-color, var(--theme-head));
+      box-shadow: 0 0 12px var(--chip-color, var(--theme-head));
+      flex: 0 0 auto;
+    }
+
+    .theme-options input:checked + .theme-chip {
+      border-color: color-mix(in srgb, var(--theme-head) 72%, white 8%);
+      background: color-mix(in srgb, var(--theme-head) 18%, transparent);
+      color: #ffffff;
+    }
+
+    .theme-scroll {
+      position: relative;
+      z-index: 2;
+    }
+
+    .theme-step {
+      min-height: 86vh;
+      display: flex;
+      align-items: center;
+      width: min(1200px, calc(100% - 40px));
+      margin: 0 auto;
+      padding: 8vh 0 12vh;
+    }
+
+    .theme-copy {
+      width: min(600px, 100%);
+      opacity: 0.34;
+      transform: translateY(34px) scale(0.98);
+      filter: blur(8px);
+      transition: opacity 520ms ease, transform 720ms cubic-bezier(.2, .8, .2, 1), filter 720ms ease;
+    }
+
+    .theme-step.active .theme-copy {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      filter: blur(0);
+    }
+
+    .theme-number {
+      margin-bottom: 18px;
+      color: var(--theme-head);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 13px;
+      font-weight: 900;
+    }
+
+    .theme-copy h2 {
+      margin: 0;
+      font-size: clamp(56px, 8vw, 116px);
+      line-height: 0.94;
+      letter-spacing: 0;
+    }
+
+    .theme-copy p {
+      max-width: 520px;
+      margin: 22px 0 0;
+      color: #d8e0ea;
+      font-size: clamp(18px, 1.8vw, 22px);
+      line-height: 1.58;
+    }
+
+    .palette-note {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      width: min(560px, 100%);
+      margin-top: 28px;
+    }
+
+    .palette-chip {
+      min-height: 58px;
+      padding: 9px;
+      border: 1px solid rgba(220, 235, 255, 0.16);
+      border-radius: 7px;
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.03)),
+        color-mix(in srgb, var(--chip) 20%, rgba(4, 5, 9, 0.72));
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+
+    .palette-chip::before {
+      content: "";
+      display: block;
+      width: 100%;
+      height: 8px;
+      margin-bottom: 12px;
+      border-radius: 999px;
+      background: var(--chip);
+      box-shadow: 0 0 18px color-mix(in srgb, var(--chip) 70%, transparent);
+    }
+
+    .palette-chip strong,
+    .palette-chip span {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .palette-chip strong {
+      color: #f5f8ff;
+      font-size: 12px;
+      line-height: 1.2;
+    }
+
+    .palette-chip span {
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.2;
+    }
+
+    @media (max-width: 980px) {
+      .demo-panel {
+        top: 78px;
+        right: 20px;
+        width: min(340px, calc(100vw - 40px));
+        max-height: calc(100dvh - 92px);
+      }
+    }
+
+    @media (max-width: 720px) {
+      .nav {
+        width: calc(100% - 28px);
+      }
+
+      .brand span:last-child {
+        display: none;
+      }
+
+      .nav-actions {
+        gap: 8px;
+      }
+
+      .nav-icon,
+      .lang-button {
+        width: 34px;
+        height: 34px;
+      }
+
+      .hero {
+        width: calc(100% - 32px);
+        padding-top: 78px;
+      }
+
+      .demo-panel {
+        top: 72px;
+        right: 14px;
+        width: min(330px, calc(100vw - 28px));
+        padding: 12px;
+      }
+
+      .control-row {
+        grid-template-columns: 78px 1fr 38px;
+        gap: 8px;
+      }
+
+      .theme-options {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .theme-step {
+        width: calc(100% - 32px);
+      }
+
+      .palette-note {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas class="rain" id="rain" aria-hidden="true"></canvas>
+  <div class="page-vignette" aria-hidden="true"></div>
+
+  <nav class="nav" aria-label="Main navigation">
+    <a class="brand" href="#top">
+      <span class="mark">字</span>
+      <span>Glyph Rain Wallpaper</span>
+    </a>
+    <div class="nav-actions">
+      <button class="lang-button" id="langToggle" type="button" aria-label="Switch language" title="Switch language">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M2 12h20"></path><path d="M12 2a15.3 15.3 0 0 1 0 20"></path><path d="M12 2a15.3 15.3 0 0 0 0 20"></path></svg>
+        <span class="lang-code" id="langCode">EN</span>
+      </button>
+      <a class="nav-icon" href="https://github.com/your-name/GlyphRainWallpaper" aria-label="Star on GitHub" title="Star on GitHub">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11.5 3.3c.2-.4.8-.4 1 0l2.5 5.1 5.6.8c.5.1.7.7.3 1l-4 3.9 1 5.5c.1.5-.5.9-.9.7L12 17.7l-5 2.6c-.4.2-1-.2-.9-.7l1-5.5-4-3.9c-.4-.3-.2-.9.3-1l5.6-.8 2.5-5.1Z"></path></svg>
+        <span class="sr-only">Star</span>
+      </a>
+      <a class="nav-icon" href="https://github.com/your-name/GlyphRainWallpaper/releases" aria-label="View releases" title="View releases">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.6 13.5 13.5 20.6a2 2 0 0 1-2.8 0l-7.3-7.3A2 2 0 0 1 2.8 12V4a2 2 0 0 1 2-2h8a2 2 0 0 1 1.4.6l7.4 7.4a2 2 0 0 1 0 2.8Z"></path><path d="M7.5 7.5h.01"></path></svg>
+        <span class="sr-only">Releases</span>
+      </a>
+    </div>
+  </nav>
+
+  <header class="hero" id="top">
+    <div class="hero-inner">
+      <div class="eyebrow" data-i18n="eyebrow">macOS live wallpaper</div>
+      <h1>Glyph Rain</h1>
+      <p class="hero-copy" data-i18n="heroCopy">安静的字符场。光在流动，文字会记住自己。</p>
+    </div>
+  </header>
+
+  <div class="scroll-cue" id="scrollCue" aria-hidden="true">
+    <span data-i18n="scrollCue">Scroll</span>
+    <span class="scroll-cue-mark"></span>
+  </div>
+
+  <aside class="demo-panel" aria-label="Interactive preview controls">
+    <h2 data-i18n="panelTitle">实时预览控制</h2>
+    <div class="control-row">
+      <span data-i18n="themeLabel">颜色风格</span>
+      <div class="theme-options" id="themeControl">
+        <label><input type="radio" name="theme" value="unit01" checked><span class="theme-chip" style="--chip-color:#9dff2f" data-i18n="themeUnit01">初号机</span></label>
+        <label><input type="radio" name="theme" value="terminal"><span class="theme-chip" style="--chip-color:#aaffbf" data-i18n="themeTerminal">黑客帝国</span></label>
+        <label><input type="radio" name="theme" value="alert"><span class="theme-chip" style="--chip-color:#d5ff36" data-i18n="themeAlert">使徒</span></label>
+        <label><input type="radio" name="theme" value="rx78"><span class="theme-chip" style="--chip-color:#f7fbff">RX-78</span></label>
+        <label><input type="radio" name="theme" value="zaku"><span class="theme-chip" style="--chip-color:#b8f084" data-i18n="themeZaku">扎古</span></label>
+        <label><input type="radio" name="theme" value="char"><span class="theme-chip" style="--chip-color:#ffd1cb" data-i18n="themeChar">夏亚</span></label>
+        <label><input type="radio" name="theme" value="nu"><span class="theme-chip" style="--chip-color:#f6f0cf">ν Gundam</span></label>
+        <label><input type="radio" name="theme" value="unicorn"><span class="theme-chip" style="--chip-color:#ffffff" data-i18n="themeUnicorn">独角兽</span></label>
+      </div>
+    </div>
+    <label class="control-row">
+      <span data-i18n="speed">下落速度</span>
+      <input id="speedControl" type="range" min="1" max="10" value="5">
+      <output for="speedControl">5/10</output>
+    </label>
+    <label class="control-row">
+      <span data-i18n="density">文字列数量</span>
+      <input id="densityControl" type="range" min="1" max="10" value="5">
+      <output for="densityControl">5/10</output>
+    </label>
+    <label class="control-row">
+      <span data-i18n="size">文字大小</span>
+      <input id="sizeControl" type="range" min="1" max="10" value="5">
+      <output for="sizeControl">5/10</output>
+    </label>
+    <label class="control-row">
+      <span data-i18n="brightness">整体亮度</span>
+      <input id="brightnessControl" type="range" min="1" max="10" value="5">
+      <output for="brightnessControl">5/10</output>
+    </label>
+    <label class="control-row">
+      <span data-i18n="halo">光晕强度</span>
+      <input id="haloControl" type="range" min="1" max="10" value="5">
+      <output for="haloControl">5/10</output>
+    </label>
+    <label class="control-row">
+      <span data-i18n="tail">发光长度</span>
+      <input id="tailControl" type="range" min="1" max="10" value="5">
+      <output for="tailControl">5/10</output>
+    </label>
+  </aside>
+
+  <main class="theme-scroll" id="themes" aria-label="Theme stories">
+    <section class="theme-step" data-theme="unit01">
+      <div class="theme-copy">
+        <div class="theme-number">01</div>
+        <h2 data-i18n="storyUnit01Title">初号机</h2>
+        <p data-i18n="storyUnit01Copy">紫色装甲沉入黑场，荧光绿像同步率峰值一样穿过字符网格。</p>
+        <div class="palette-note" data-palette="unit01"></div>
+      </div>
+    </section>
+    <section class="theme-step" data-theme="terminal">
+      <div class="theme-copy">
+        <div class="theme-number">02</div>
+        <h2 data-i18n="storyTerminalTitle">黑客帝国</h2>
+        <p data-i18n="storyTerminalCopy">纯黑底色压住空间，数字与假名被荧光绿点亮，像进入 Matrix 后看到的第一场代码雨。</p>
+        <div class="palette-note" data-palette="terminal"></div>
+      </div>
+    </section>
+    <section class="theme-step" data-theme="alert">
+      <div class="theme-copy">
+        <div class="theme-number">03</div>
+        <h2 data-i18n="storyAlertTitle">使徒警戒</h2>
+        <p data-i18n="storyAlertCopy">洋红暗流和酸性黄光交错，像警报响起前一秒的屏幕呼吸。</p>
+        <div class="palette-note" data-palette="alert"></div>
+      </div>
+    </section>
+    <section class="theme-step" data-theme="rx78">
+      <div class="theme-copy">
+        <div class="theme-number">04</div>
+        <h2>RX-78</h2>
+        <p data-i18n="storyRx78Copy">白色机体光、蓝色阴影和红色识别色，构成第一台高达的清晰轮廓。</p>
+        <div class="palette-note" data-palette="rx78"></div>
+      </div>
+    </section>
+    <section class="theme-step" data-theme="zaku">
+      <div class="theme-copy">
+        <div class="theme-number">05</div>
+        <h2 data-i18n="storyZakuTitle">扎古</h2>
+        <p data-i18n="storyZakuCopy">低饱和军绿压住背景，红色信号像单眼传感器偶尔扫过。</p>
+        <div class="palette-note" data-palette="zaku"></div>
+      </div>
+    </section>
+    <section class="theme-step" data-theme="char">
+      <div class="theme-copy">
+        <div class="theme-number">06</div>
+        <h2 data-i18n="storyCharTitle">夏亚</h2>
+        <p data-i18n="storyCharCopy">深红速度感切开黑场，金色高光留下王牌机师的轨迹。</p>
+        <div class="palette-note" data-palette="char"></div>
+      </div>
+    </section>
+    <section class="theme-step" data-theme="nu">
+      <div class="theme-copy">
+        <div class="theme-number">07</div>
+        <h2>ν Gundam</h2>
+        <p data-i18n="storyNuCopy">深蓝宇宙底色里，暖白和金色像精神感应框架的微光。</p>
+        <div class="palette-note" data-palette="nu"></div>
+      </div>
+    </section>
+    <section class="theme-step" data-theme="unicorn">
+      <div class="theme-copy">
+        <div class="theme-number">08</div>
+        <h2 data-i18n="storyUnicornTitle">独角兽</h2>
+        <p data-i18n="storyUnicornCopy">白色外甲亮到近乎失真，青色和红色从裂缝里溢出。</p>
+        <div class="palette-note" data-palette="unicorn"></div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const canvas = document.getElementById("rain");
+    const ctx = canvas.getContext("2d", { alpha: false });
+    const chars = "アイウエオカキクケコサシスセソタチツテトナニヌネノ0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ#$%&*+-/[]{}";
+    let width = 0;
+    let height = 0;
+    let dpr = 1;
+    let columns = [];
+    let lastTime = performance.now();
+    let language = "zh";
+    const themes = {
+      unit01: { bg: "#030108", trail: "#4b1b84", head: "#9dff2f", accent: "#ff7a18" },
+      terminal: { bg: "#020403", trail: "#005f2f", head: "#aaffbf", accent: "#35ff6d" },
+      alert: { bg: "#090105", trail: "#6d184d", head: "#d5ff36", accent: "#ff4b13" },
+      rx78: { bg: "#020510", trail: "#2457b8", head: "#f7fbff", accent: "#e41f26" },
+      zaku: { bg: "#020701", trail: "#24451d", head: "#b8f084", accent: "#ff5f4d" },
+      char: { bg: "#080102", trail: "#8e1d2c", head: "#ffd1cb", accent: "#ffb347" },
+      nu: { bg: "#010309", trail: "#132b57", head: "#f6f0cf", accent: "#ffcc2e" },
+      unicorn: { bg: "#020204", trail: "#7a1224", head: "#ffffff", accent: "#42f5ff" }
+    };
+    const paletteLabels = {
+      zh: {
+        bg: "深黑背景",
+        trail: "拖尾阴影",
+        head: "头部高光",
+        accent: "稀有点缀"
+      },
+      en: {
+        bg: "Deep black",
+        trail: "Trail shade",
+        head: "Head glow",
+        accent: "Rare accent"
+      }
+    };
+    const strings = {
+      zh: {
+        eyebrow: "macOS 动态壁纸",
+        heroCopy: "一个菜单栏里的沉浸式文字雨壁纸。固定字符网格、流动亮度波、多套科幻配色，让桌面像一块正在呼吸的显示器。",
+        scrollCue: "向下滚动",
+        panelTitle: "实时预览控制",
+        themeLabel: "颜色风格",
+        themeUnit01: "初号机",
+        themeTerminal: "黑客帝国",
+        themeAlert: "使徒",
+        themeZaku: "扎古",
+        themeChar: "夏亚",
+        themeUnicorn: "独角兽",
+        speed: "下落速度",
+        density: "文字列数量",
+        size: "文字大小",
+        brightness: "整体亮度",
+        halo: "光晕强度",
+        tail: "发光长度",
+        storyUnit01Title: "初号机",
+        storyUnit01Copy: "紫色装甲沉入黑场，荧光绿像同步率峰值一样穿过字符网格。",
+        storyTerminalTitle: "黑客帝国",
+        storyTerminalCopy: "纯黑底色压住空间，数字与假名被荧光绿点亮，像进入 Matrix 后看到的第一场代码雨。",
+        storyAlertTitle: "使徒警戒",
+        storyAlertCopy: "洋红暗流和酸性黄光交错，像警报响起前一秒的屏幕呼吸。",
+        storyRx78Copy: "白色机体光、蓝色阴影和红色识别色，构成第一台高达的清晰轮廓。",
+        storyZakuTitle: "扎古",
+        storyZakuCopy: "低饱和军绿压住背景，红色信号像单眼传感器偶尔扫过。",
+        storyCharTitle: "夏亚",
+        storyCharCopy: "深红速度感切开黑场，金色高光留下王牌机师的轨迹。",
+        storyNuCopy: "深蓝宇宙底色里，暖白和金色像精神感应框架的微光。",
+        storyUnicornTitle: "独角兽",
+        storyUnicornCopy: "白色外甲亮到近乎失真，青色和红色从裂缝里溢出。"
+      },
+      en: {
+        eyebrow: "macOS live wallpaper",
+        heroCopy: "An immersive character-rain wallpaper from the menu bar. Fixed glyph grids, flowing light waves, and sci-fi palettes turn the desktop into a breathing display.",
+        scrollCue: "Scroll",
+        panelTitle: "Live preview",
+        themeLabel: "Theme",
+        themeUnit01: "Unit-01",
+        themeTerminal: "Matrix",
+        themeAlert: "Angel",
+        themeZaku: "Zaku",
+        themeChar: "Char",
+        themeUnicorn: "Unicorn",
+        speed: "Speed",
+        density: "Columns",
+        size: "Text size",
+        brightness: "Brightness",
+        halo: "Halo",
+        tail: "Bright tail",
+        storyUnit01Title: "Unit-01",
+        storyUnit01Copy: "Purple armor sinks into the black field as neon green cuts through the glyph grid like a sync-ratio spike.",
+        storyTerminalTitle: "Matrix",
+        storyTerminalCopy: "A pure black field holds the space while numbers and kana ignite in fluorescent green, like the first code rain inside the Matrix.",
+        storyAlertTitle: "Angel Alert",
+        storyAlertCopy: "Magenta undertow and acidic yellow light cross like the second before an alarm sounds.",
+        storyRx78Copy: "White armor light, blue shadow, and red identity marks form the outline of the first Gundam.",
+        storyZakuTitle: "Zaku",
+        storyZakuCopy: "Muted military green holds the background while a red signal sweeps like a mono-eye sensor.",
+        storyCharTitle: "Char",
+        storyCharCopy: "Deep red speed slices through the black field, with gold highlights tracing an ace pilot's path.",
+        storyNuCopy: "In a deep blue space field, warm white and gold glow like a psycho-frame whisper.",
+        storyUnicornTitle: "Unicorn",
+        storyUnicornCopy: "White armor flares near overexposure as cyan and red leak through the cracks."
+      }
+    };
+    const controls = {
+      theme: document.querySelectorAll("input[name='theme']"),
+      speed: document.getElementById("speedControl"),
+      density: document.getElementById("densityControl"),
+      size: document.getElementById("sizeControl"),
+      brightness: document.getElementById("brightnessControl"),
+      halo: document.getElementById("haloControl"),
+      tail: document.getElementById("tailControl")
+    };
+    const demo = {
+      theme: "unit01",
+      speed: 1,
+      density: 1,
+      size: 1,
+      brightness: 1,
+      halo: 1,
+      tail: 20
+    };
+
+    function pick() {
+      return chars[Math.floor(Math.random() * chars.length)];
+    }
+
+    function hexToRgb(hex) {
+      const raw = hex.replace("#", "");
+      const value = Number.parseInt(raw, 16);
+      return {
+        r: (value >> 16) & 255,
+        g: (value >> 8) & 255,
+        b: value & 255
+      };
+    }
+
+    function mix(a, b, t) {
+      return {
+        r: Math.round(a.r + (b.r - a.r) * t),
+        g: Math.round(a.g + (b.g - a.g) * t),
+        b: Math.round(a.b + (b.b - a.b) * t)
+      };
+    }
+
+    function rgba(c, a) {
+      return `rgba(${c.r}, ${c.g}, ${c.b}, ${a})`;
+    }
+
+    function level(input) {
+      return Number(input.value);
+    }
+
+    function mapLevel(input, min, max) {
+      return min + ((level(input) - 1) / 9) * (max - min);
+    }
+
+    function selectedTheme() {
+      return document.querySelector("input[name='theme']:checked")?.value || "unit01";
+    }
+
+    function applyPageTheme(theme) {
+      const root = document.documentElement;
+      root.style.setProperty("--theme-bg", theme.bg);
+      root.style.setProperty("--theme-trail", theme.trail);
+      root.style.setProperty("--theme-head", theme.head);
+      root.style.setProperty("--theme-accent", theme.accent);
+    }
+
+    function setTheme(themeKey, rebuild = false) {
+      if (!themes[themeKey]) return;
+      const radio = document.querySelector(`input[name='theme'][value='${themeKey}']`);
+      if (radio && !radio.checked) radio.checked = true;
+      demo.theme = themeKey;
+      applyPageTheme(themes[demo.theme]);
+      document.querySelectorAll(".theme-step").forEach((step) => {
+        step.classList.toggle("active", step.dataset.theme === demo.theme);
+      });
+      if (rebuild) resize(true);
+    }
+
+    function applyLanguage() {
+      document.documentElement.lang = language === "zh" ? "zh-CN" : "en";
+      document.getElementById("langCode").textContent = language === "zh" ? "EN" : "中";
+      document.querySelectorAll("[data-i18n]").forEach((node) => {
+        const key = node.dataset.i18n;
+        node.textContent = strings[language][key] || node.textContent;
+      });
+      renderPaletteNotes();
+    }
+
+    function renderPaletteNotes() {
+      document.querySelectorAll("[data-palette]").forEach((node) => {
+        const theme = themes[node.dataset.palette];
+        const labels = paletteLabels[language];
+        node.innerHTML = [
+          ["bg", theme.bg],
+          ["trail", theme.trail],
+          ["head", theme.head],
+          ["accent", theme.accent]
+        ].map(([key, color]) => `
+          <div class="palette-chip" style="--chip:${color}">
+            <strong>${labels[key]}</strong>
+            <span>${color.toUpperCase()}</span>
+          </div>
+        `).join("");
+      });
+    }
+
+    function readControls(rebuild = true) {
+      setTheme(selectedTheme(), false);
+      demo.speed = mapLevel(controls.speed, 0.45, 2.3);
+      demo.density = mapLevel(controls.density, 0.72, 1.85);
+      demo.size = mapLevel(controls.size, 0.72, 1.42);
+      demo.brightness = mapLevel(controls.brightness, 0.28, 1.75);
+      demo.halo = mapLevel(controls.halo, 0, 1);
+      demo.tail = Math.round(mapLevel(controls.tail, 12, 30));
+      document.querySelectorAll(".control-row input[type='range']").forEach((input) => {
+        const output = input.parentElement.querySelector("output");
+        output.textContent = `${input.value}/10`;
+      });
+      if (rebuild) resize(true);
+    }
+
+    function resize(force = false) {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const nextWidth = Math.floor(canvas.clientWidth * dpr);
+      const nextHeight = Math.floor(canvas.clientHeight * dpr);
+      if (!force && nextWidth === width && nextHeight === height) return;
+      width = nextWidth;
+      height = nextHeight;
+      canvas.width = width;
+      canvas.height = height;
+      const fontSize = Math.max(13, Math.round(20 * dpr * demo.size));
+      const rowStep = Math.round(fontSize * 1.25);
+      const columnStep = Math.max(fontSize * 1.35, Math.round(fontSize * (3.25 - demo.density)));
+      ctx.font = `800 ${fontSize}px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      const count = Math.ceil(width / columnStep) + 2;
+      const oldColumns = columns;
+      columns = Array.from({ length: count }, (_, index) => {
+        const rows = Math.ceil(height / rowStep) + 4;
+        const previous = oldColumns[index];
+        return {
+          x: index * columnStep + columnStep * 0.5,
+          rows,
+          rowStep,
+          head: previous ? (previous.head / previous.rows) * rows : Math.random() * rows,
+          lastHead: previous ? Math.floor((previous.head / previous.rows) * rows) : 0,
+          speed: 7 + Math.random() * 8,
+          tail: Math.round(demo.tail * (1.25 + Math.random() * 1.2)),
+          glyphs: Array.from({ length: rows }, (_, row) => previous?.glyphs[row] || pick()),
+          accents: Array.from({ length: rows }, (_, row) => previous?.accents[row] ?? Math.random() < 0.055)
+        };
+      });
+    }
+
+    function renderFrame(now, forcedDelta = null) {
+      resize();
+      const delta = forcedDelta ?? Math.min(0.05, Math.max(0.001, (now - lastTime) / 1000));
+      lastTime = now;
+      const theme = themes[demo.theme];
+      const palette = {
+        bg: theme.bg,
+        trail: hexToRgb(theme.trail),
+        head: hexToRgb(theme.head),
+        accent: hexToRgb(theme.accent)
+      };
+      ctx.font = `800 ${Math.max(13, Math.round(20 * dpr * demo.size))}px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`;
+      ctx.fillStyle = palette.bg;
+      ctx.fillRect(0, 0, width, height);
+      for (const column of columns) {
+        const previousHead = column.lastHead;
+        column.head = (column.head + column.speed * demo.speed * delta) % column.rows;
+        const headRow = Math.floor(column.head);
+        const crossed = (headRow - previousHead + column.rows) % column.rows;
+        for (let step = 1; step <= crossed; step++) {
+          const refreshRow = (previousHead + step - column.tail - 1 + column.rows) % column.rows;
+          column.glyphs[refreshRow] = pick();
+          column.accents[refreshRow] = Math.random() < 0.055;
+        }
+        column.lastHead = headRow;
+        for (let row = 0; row < column.rows; row++) {
+          const distance = (column.head - row + column.rows) % column.rows;
+          if (distance > column.tail) continue;
+          const t = Math.min(distance / demo.tail, 1);
+          const high = 0.4;
+          const mid = 0.7;
+          let intensity;
+          if (t < high) {
+            const local = t / high;
+            intensity = 0.76 + Math.pow(1 - local, 0.65) * 0.24;
+          } else if (t < mid) {
+            const local = (t - high) / (mid - high);
+            intensity = 0.36 + Math.pow(1 - local, 1.45) * 0.34;
+          } else {
+            const local = (t - mid) / (1 - mid);
+            intensity = 0.12 + Math.pow(1 - local, 2.4) * 0.2;
+          }
+          const colorBlend = Math.pow(1 - t, 2.2);
+          const useAccent = column.accents[row];
+          const baseColor = mix(palette.trail, palette.head, colorBlend);
+          const color = useAccent ? mix(baseColor, palette.accent, 0.72) : baseColor;
+          const y = row * column.rowStep - column.rowStep * 2;
+          ctx.shadowColor = rgba(color, 1);
+          ctx.shadowBlur = 64 * dpr * demo.halo * Math.pow(colorBlend, 0.85) * (useAccent ? 1.18 : 1);
+          ctx.fillStyle = rgba(color, Math.min(1, intensity * demo.brightness * (useAccent ? 1.08 : 1)));
+          ctx.fillText(column.glyphs[row], column.x, y);
+        }
+      }
+    }
+
+    function frame(now) {
+      renderFrame(now);
+      requestAnimationFrame(frame);
+    }
+
+    window.__glyphRainCaptureFrame = (themeKey, deltaSeconds) => {
+      setTheme(themeKey, false);
+      renderFrame(lastTime + deltaSeconds * 1000, deltaSeconds);
+    };
+
+    const themeSteps = [...document.querySelectorAll(".theme-step")];
+
+    function syncThemeFromScroll() {
+      const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+      document.getElementById("scrollCue").classList.toggle("hidden", window.scrollY >= maxScroll - 24);
+      const heroBottom = document.getElementById("top").getBoundingClientRect().bottom;
+      if (heroBottom > window.innerHeight * 0.42) {
+        setTheme("unit01", false);
+        return;
+      }
+      const center = window.innerHeight * 0.5;
+      let active = themeSteps[0];
+      let bestDistance = Number.POSITIVE_INFINITY;
+      themeSteps.forEach((step) => {
+        const rect = step.getBoundingClientRect();
+        const distance = Math.abs(rect.top + rect.height * 0.5 - center);
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          active = step;
+        }
+      });
+      if (active) setTheme(active.dataset.theme, false);
+    }
+
+    let scrollFrame = 0;
+    window.addEventListener("scroll", () => {
+      if (scrollFrame) return;
+      scrollFrame = requestAnimationFrame(() => {
+        scrollFrame = 0;
+        syncThemeFromScroll();
+      });
+    }, { passive: true });
+
+    document.getElementById("langToggle").addEventListener("click", () => {
+      language = language === "zh" ? "en" : "zh";
+      applyLanguage();
+    });
+    window.addEventListener("resize", () => resize(true));
+    [...controls.theme, controls.speed, controls.density, controls.size, controls.brightness, controls.halo, controls.tail].forEach((control) => {
+      control.addEventListener("input", () => readControls(control !== controls.brightness && control !== controls.halo));
+      control.addEventListener("change", () => readControls(control !== controls.brightness && control !== controls.halo));
+    });
+    applyLanguage();
+    readControls(true);
+    syncThemeFromScroll();
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>
