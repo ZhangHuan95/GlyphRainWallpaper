@@ -114,13 +114,14 @@
       gap: 10px;
     }
 
-    .nav-icon,
+    .nav-link,
     .lang-button {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 38px;
+      min-width: 38px;
       height: 38px;
+      padding: 0 10px;
       border: 1px solid rgba(220, 235, 255, 0.18);
       border-radius: 7px;
       background: rgba(255, 255, 255, 0.06);
@@ -130,13 +131,13 @@
       cursor: pointer;
     }
 
-    .nav-icon:hover,
+    .nav-link:hover,
     .lang-button:hover {
       border-color: color-mix(in srgb, var(--theme-head) 64%, white 8%);
       background: color-mix(in srgb, var(--theme-head) 14%, transparent);
     }
 
-    .nav-icon svg,
+    .nav-link svg,
     .lang-button svg {
       width: 18px;
       height: 18px;
@@ -147,8 +148,31 @@
       stroke-linejoin: round;
     }
 
+    .nav-link {
+      gap: 7px;
+      min-width: 70px;
+      color: #edf3fb;
+      font-size: 12px;
+      line-height: 1;
+      white-space: nowrap;
+    }
+
+    .nav-link[aria-busy="true"] {
+      color: var(--muted);
+    }
+
+    .nav-link-value {
+      display: inline-block;
+      min-width: 20px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-weight: 900;
+      text-align: left;
+    }
+
     .lang-button {
       position: relative;
+      width: 38px;
+      padding: 0;
     }
 
     .lang-code {
@@ -490,10 +514,25 @@
         gap: 8px;
       }
 
-      .nav-icon,
+      .nav-link,
       .lang-button {
         width: 34px;
+        min-width: 34px;
         height: 34px;
+        padding: 0;
+      }
+
+      .nav-link {
+        gap: 0;
+      }
+
+      .nav-link-value {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
       }
 
       .hero {
@@ -541,13 +580,13 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M2 12h20"></path><path d="M12 2a15.3 15.3 0 0 1 0 20"></path><path d="M12 2a15.3 15.3 0 0 0 0 20"></path></svg>
         <span class="lang-code" id="langCode">EN</span>
       </button>
-      <a class="nav-icon" href="https://github.com/your-name/GlyphRainWallpaper" aria-label="Star on GitHub" title="Star on GitHub">
+      <a class="nav-link" id="starLink" href="https://github.com/ZhangHuan95/GlyphRainWallpaper" aria-label="Star on GitHub" title="Star on GitHub" aria-busy="true">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11.5 3.3c.2-.4.8-.4 1 0l2.5 5.1 5.6.8c.5.1.7.7.3 1l-4 3.9 1 5.5c.1.5-.5.9-.9.7L12 17.7l-5 2.6c-.4.2-1-.2-.9-.7l1-5.5-4-3.9c-.4-.3-.2-.9.3-1l5.6-.8 2.5-5.1Z"></path></svg>
-        <span class="sr-only">Star</span>
+        <span class="nav-link-value" id="starCount">...</span>
       </a>
-      <a class="nav-icon" href="https://github.com/your-name/GlyphRainWallpaper/releases" aria-label="View releases" title="View releases">
+      <a class="nav-link" id="releaseLink" href="https://github.com/ZhangHuan95/GlyphRainWallpaper/releases/latest" aria-label="View latest release" title="View latest release" aria-busy="true">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.6 13.5 13.5 20.6a2 2 0 0 1-2.8 0l-7.3-7.3A2 2 0 0 1 2.8 12V4a2 2 0 0 1 2-2h8a2 2 0 0 1 1.4.6l7.4 7.4a2 2 0 0 1 0 2.8Z"></path><path d="M7.5 7.5h.01"></path></svg>
-        <span class="sr-only">Releases</span>
+        <span class="nav-link-value" id="releaseTag">...</span>
       </a>
     </div>
   </nav>
@@ -790,6 +829,10 @@
       halo: document.getElementById("haloControl"),
       tail: document.getElementById("tailControl")
     };
+    const github = {
+      owner: "ZhangHuan95",
+      repo: "GlyphRainWallpaper"
+    };
     const demo = {
       theme: "unit01",
       speed: 1,
@@ -866,6 +909,54 @@
         node.textContent = strings[language][key] || node.textContent;
       });
       renderPaletteNotes();
+    }
+
+    function formatCount(value) {
+      if (!Number.isFinite(value)) return "-";
+      if (value < 1000) return String(value);
+      if (value < 1000000) return `${(value / 1000).toFixed(value < 10000 ? 1 : 0)}k`;
+      return `${(value / 1000000).toFixed(1)}m`;
+    }
+
+    async function fetchJson(url) {
+      const response = await fetch(url, {
+        headers: {
+          Accept: "application/vnd.github+json"
+        }
+      });
+      if (!response.ok) throw new Error(`GitHub API returned ${response.status}`);
+      return response.json();
+    }
+
+    async function loadGitHubMeta() {
+      const starLink = document.getElementById("starLink");
+      const releaseLink = document.getElementById("releaseLink");
+      const starCount = document.getElementById("starCount");
+      const releaseTag = document.getElementById("releaseTag");
+      const base = `https://api.github.com/repos/${github.owner}/${github.repo}`;
+      try {
+        const [repo, release] = await Promise.all([
+          fetchJson(base),
+          fetchJson(`${base}/releases/latest`)
+        ]);
+        starCount.textContent = formatCount(repo.stargazers_count);
+        starLink.href = repo.html_url;
+        starLink.title = `${repo.stargazers_count} GitHub stars`;
+        starLink.setAttribute("aria-label", `${repo.stargazers_count} GitHub stars`);
+        starLink.removeAttribute("aria-busy");
+
+        releaseTag.textContent = release.tag_name;
+        releaseLink.href = release.html_url;
+        releaseLink.title = `Latest release ${release.tag_name}`;
+        releaseLink.setAttribute("aria-label", `Latest release ${release.tag_name}`);
+        releaseLink.removeAttribute("aria-busy");
+      } catch (error) {
+        starCount.textContent = "-";
+        releaseTag.textContent = "-";
+        starLink.removeAttribute("aria-busy");
+        releaseLink.removeAttribute("aria-busy");
+        console.warn(error);
+      }
     }
 
     function renderPaletteNotes() {
@@ -1043,6 +1134,7 @@
       control.addEventListener("change", () => readControls(control !== controls.brightness && control !== controls.halo));
     });
     applyLanguage();
+    loadGitHubMeta();
     readControls(true);
     syncThemeFromScroll();
     requestAnimationFrame(frame);
