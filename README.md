@@ -1,72 +1,49 @@
-# Glyph Rain Wallpaper / 字雨动态壁纸
+# Glyph Rain Wallpaper
 
-一个 macOS 菜单栏动态壁纸应用，用固定字符网格、流动亮度波和多套科幻配色生成高密度文字雨。
+把桌面变成一场有呼吸感的字雨。
 
-A macOS menu bar wallpaper app that renders high-intensity character rain with fixed glyph grids, flowing brightness waves, and multiple sci-fi color themes.
+Glyph Rain Wallpaper 是一个 macOS 动态壁纸应用。它不是简单地把字符随机洒满屏幕，而是用稳定的文字网格、流动的亮度波和多套科幻配色，让桌面像一块正在运行的未来显示器。
 
 [在线演示 / Live demo](https://zhanghuan95.github.io/GlyphRainWallpaper/)
 
 ![Glyph Rain theme switching demo](docs/assets/theme-switching.gif)
 
-Glyph Rain 会把桌面变成可调节的文字雨表面。每块屏幕会被拆成稳定的文字格子：雨阵经过时只改变亮度、颜色、光晕和发光长度；每个格子的字符会保持不动，直到当前雨尾完全离开后才刷新。
+## 为什么会好看
 
-Glyph Rain turns the desktop into a configurable character-rain surface. Each screen is divided into stable text cells: the rain passes through by changing brightness, color, halo, and tail length, while the glyph in each cell stays fixed until the current rain streak has fully moved past it.
+字符不会乱跳。每个字会先留在自己的格子里，等一束光完整经过后再悄悄刷新，所以画面有速度感，但不会碎。
 
-## 功能亮点 / Highlights
+颜色不是简单换皮。初号机、黑客帝国、RX-78、扎古、夏亚、ν 高达、独角兽等主题都有自己的底色、拖尾、高光和点缀色，切换时更像换了一套场景灯光。
 
-- 固定字符网格渲染：雨阵经过时字符不乱跳，只改变亮度和色彩。
-- Fixed glyph-grid renderer: characters stay stable while the rain wave passes through.
-- 8 套带有角色/场景设定的配色，包括初号机、黑客帝国、RX-78、扎古、夏亚、ν 高达和独角兽风格。
-- Eight story-driven color themes, including Unit-01, Matrix, RX-78, Zaku, Char, Nu Gundam, and Unicorn-inspired palettes.
-- 10 档控制：下落速度、文字列数量、文字大小、整体亮度、光晕强度、发光文字长度。
-- 10-step controls for speed, column count, text size, brightness, halo intensity, and bright tail length.
-- 原生 macOS 菜单栏应用，为每块启用的屏幕创建一个壁纸窗口。
-- Native macOS menu bar app with one wallpaper window per active display.
-- Canvas 渲染器嵌入 `WKWebView`，支持 Retina 自适应缩放。
-- Canvas renderer embedded in `WKWebView`, with Retina-aware scaling.
+它也不会抢你的鼠标。壁纸窗口贴在桌面层，不接管点击，只负责安静地发光。
 
-## 环境要求 / Requirements
+## 适合谁
 
-- macOS 13 或更新版本 / macOS 13 or newer
-- Swift 6 toolchain / Xcode Command Line Tools
+- 想让 Mac 桌面更有赛博感的人
+- 喜欢文字雨、机甲配色、终端美学的人
+- 想要一个轻量、原生、常驻菜单栏的动态壁纸工具的人
 
-## 构建 / Build
+English: Glyph Rain Wallpaper is a macOS menu bar live wallpaper that turns your desktop into a stable, cinematic glyph-rain display with sci-fi color themes.
+
+## 下载
+
+从 Releases 下载最新版本：
+
+[下载最新版本 / Download latest release](https://github.com/ZhangHuan95/GlyphRainWallpaper/releases/latest)
+
+需要 macOS 13 或更新版本。
+
+## 从源码构建
 
 ```sh
 chmod +x Scripts/build-app.sh
 Scripts/build-app.sh
-```
-
-构建完成后，App 会生成在：
-
-The app bundle is created at:
-
-```text
-dist/GlyphRainWallpaper.app
-```
-
-运行：
-
-Run it with:
-
-```sh
 open dist/GlyphRainWallpaper.app
 ```
 
-## 控制项 / Controls
+需要 Swift 6 toolchain 或 Xcode Command Line Tools。
 
-通过菜单栏里的 `Glyph Rain` 可以暂停/继续动画、选择颜色风格、调节速度、文字列数量、字号、整体亮度、光晕强度、发光文字长度，启用或禁用屏幕，刷新壁纸窗口，以及退出应用。
+## 在线演示
 
-Use the `Glyph Rain` menu bar item to pause/resume animation, choose color presets, adjust speed, density, text size, brightness, halo, bright tail length, enable or disable displays, rebuild wallpaper windows, and quit.
+静态演示页位于 `docs/index.html`，GitHub Pages 从 `main` 分支的 `/docs` 目录发布：
 
-壁纸窗口会忽略鼠标事件，并为每块启用的屏幕创建一个无边框窗口。
-
-The wallpaper ignores mouse events and creates one borderless window per active screen.
-
-## GitHub Pages 演示 / GitHub Pages Demo
-
-[在线打开演示 / Open the live demo](https://zhanghuan95.github.io/GlyphRainWallpaper/)
-
-静态演示页位于 `docs/index.html`，GitHub Pages 已配置为从 `main` 分支的 `/docs` 目录发布。
-
-The static demo page lives in `docs/index.html`, and GitHub Pages is configured to publish from `/docs` on the `main` branch.
+[https://zhanghuan95.github.io/GlyphRainWallpaper/](https://zhanghuan95.github.io/GlyphRainWallpaper/)
