@@ -4,6 +4,8 @@
 
 A macOS menu bar wallpaper app that renders high-intensity character rain with fixed glyph grids, flowing brightness waves, and multiple sci-fi color themes.
 
+[在线演示 / Live demo](https://zhanghuan95.github.io/GlyphRainWallpaper/)
+
 ![Glyph Rain theme switching demo](docs/assets/theme-switching.gif)
 
 Glyph Rain 会把桌面变成可调节的文字雨表面。每块屏幕会被拆成稳定的文字格子：雨阵经过时只改变亮度、颜色、光晕和发光长度；每个格子的字符会保持不动，直到当前雨尾完全离开后才刷新。
@@ -63,6 +65,8 @@ The wallpaper ignores mouse events and creates one borderless window per active 
 
 ## GitHub Pages 演示 / GitHub Pages Demo
 
-静态演示页位于 `docs/index.html`。在 GitHub 仓库设置中启用 Pages，并选择 `docs/` 文件夹作为发布来源即可。
+[在线打开演示 / Open the live demo](https://zhanghuan95.github.io/GlyphRainWallpaper/)
 
-The static demo page lives in `docs/index.html`. In GitHub repository settings, enable Pages and choose the `docs/` folder as the source.
+静态演示页位于 `docs/index.html`，GitHub Pages 已配置为从 `main` 分支的 `/docs` 目录发布。
+
+The static demo page lives in `docs/index.html`, and GitHub Pages is configured to publish from `/docs` on the `main` branch.
